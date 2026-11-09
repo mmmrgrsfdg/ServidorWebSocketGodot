@@ -203,28 +203,32 @@ wss.on("connection", (socket) => {
                 }
                 break;
             }
-            
-            case "position": {
-                // Atualiza posição do jogador no servidor
-                playerlist.update(uuid, data.content.x, data.content.y);
-                const room = rooms.get(socket.roomId);
-                if (room) {
-                    // Repassa para os outros jogadores da sala
-                    for (const clientUuid in room.players) {
-                        const client = room.players[clientUuid];
-                        if (client !== socket && client.readyState === WebSocket.OPEN) {
-                            client.send(JSON.stringify({
-                                cmd: "update_position",
-                                content: {
-                                    uuid: uuid,
-                                    x: data.content.x,
-                                    y: data.content.y
-                                }
-                            }));
-                        }
+
+                case "position": {
+    // Atualiza posição do jogador no servidor
+    // (Agora suporta 3D e rotação)
+    playerlist.update(uuid, data.content.x, data.content.y); 
+    const room = rooms.get(socket.roomId);
+    if (room) {
+        for (const clientUuid in room.players) {
+            const client = room.players[clientUuid];
+            if (client !== socket && client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({
+                    cmd: "update_position",
+                    content: {
+                        uuid: uuid,
+                        x: data.content.x,
+                        y: data.content.y,
+                        z: data.content.z, // 👈 إضافة Z
+                        rot_y: data.content.rot_y // 👈 إضافة الدوران
                     }
-                }
-                break;
+                }));
+            }
+        }
+    }
+    break;
+}
+}
             }
             
             case "chat": {

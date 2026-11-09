@@ -1,6 +1,7 @@
 // ========================
 // Servidor Multiplayer Simples para Godot
 // Criado pelo Zee GameDev lindo de mãe
+// Atualizado para 3D
 // ========================
 
 // Importa as dependências
@@ -31,7 +32,7 @@ function generateRoomCode(length = 5) {
 }
 
 // Lista de jogadores conectados
-// Guarda posição (x,y) e a sala que pertence
+// Guarda posição (x,y,z) e a sala que pertence
 const playerlist = {
     players: [],
     
@@ -49,25 +50,28 @@ const playerlist = {
         const playersInRoom = this.getByRoom(roomCode);
         const isFirstPlayer = playersInRoom.length === 0;
 
-        // Define posição inicial para o jogador
-        // Jogador 1 começa na esquerda, Jogador 2 na direita
+        // Define posição inicial para o jogador (Agora com 3D)
         let player = {
             uuid,
             room: roomCode,
-            x: isFirstPlayer ? 550 : 700,
+            x: isFirstPlayer ? 550 : 700, // Pode mudar ou remover se estiver usando SpawnPoint no Godot
             y: 300,
+            z: 0,
+            rot_y: 0
         };
 
         this.players.push(player);
         return player;
     },
     
-    // Atualiza a posição de um jogador específico
-    update: function(uuid, newX, newY) {
+    // Atualiza a posição e rotação de um jogador específico
+    update: function(uuid, newX, newY, newZ, newRotY) {
         const player = this.get(uuid);
         if (player) {
             player.x = newX;
             player.y = newY;
+            player.z = newZ;
+            player.rot_y = newRotY;
         }
     },
     
@@ -188,7 +192,6 @@ wss.on("connection", (socket) => {
                 }
 
                 // Quando há 2 ou mais jogadores na sala, começa o jogo
-                // Troque o "length >= 2" pelo número de jogadores que você quer na sala
                 if (Object.keys(roomToJoin.players).length >= 2) {
                     console.log(`Sala ${socket.roomId} atingiu o número de jogadores. Começando o jogo!`);
                     for (const clientUuid in roomToJoin.players) {
@@ -203,32 +206,37 @@ wss.on("connection", (socket) => {
                 }
                 break;
             }
-
-                case "position": {
-    // Atualiza posição do jogador no servidor
-    // (Agora suporta 3D e rotação)
-    playerlist.update(uuid, data.content.x, data.content.y); 
-    const room = rooms.get(socket.roomId);
-    if (room) {
-        for (const clientUuid in room.players) {
-            const client = room.players[clientUuid];
-            if (client !== socket && client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({
-                    cmd: "update_position",
-                    content: {
-                        uuid: uuid,
-                        x: data.content.x,
-                        y: data.content.y,
-                        z: data.content.z, // 👈 إضافة Z
-                        rot_y: data.content.rot_y // 👈 إضافة الدوران
+            
+            case "position": {
+                // Atualiza posição do jogador no servidor (Agora com 3D e Rotação)
+                playerlist.update(
+                    uuid, 
+                    data.content.x, 
+                    data.content.y, 
+                    data.content.z, 
+                    data.content.rot_y
+                );
+                
+                const room = rooms.get(socket.roomId);
+                if (room) {
+                    // Repassa para os outros jogadores da sala
+                    for (const clientUuid in room.players) {
+                        const client = room.players[clientUuid];
+                        if (client !== socket && client.readyState === WebSocket.OPEN) {
+                            client.send(JSON.stringify({
+                                cmd: "update_position",
+                                content: {
+                                    uuid: uuid,
+                                    x: data.content.x,
+                                    y: data.content.y,
+                                    z: data.content.z,
+                                    rot_y: data.content.rot_y
+                                }
+                            }));
+                        }
                     }
-                }));
-            }
-        }
-    }
-    break;
-}
-}
+                }
+                break;
             }
             
             case "chat": {

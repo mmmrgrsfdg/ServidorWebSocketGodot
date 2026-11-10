@@ -1,7 +1,7 @@
 // ========================
 // Servidor Multiplayer Simples para Godot
 // Criado pelo Zee GameDev lindo de mãe
-// Atualizado para 3D
+// Atualizado para 3D e Animações
 // ========================
 
 // Importa as dependências
@@ -231,6 +231,28 @@ wss.on("connection", (socket) => {
                                     y: data.content.y,
                                     z: data.content.z,
                                     rot_y: data.content.rot_y
+                                }
+                            }));
+                        }
+                    }
+                }
+                break;
+            }
+
+            // ========================================
+            // NOVO: Atualização de Animação
+            // ========================================
+            case "update_anim": {
+                const room = rooms.get(socket.roomId);
+                if (room) {
+                    for (const clientUuid in room.players) {
+                        const client = room.players[clientUuid];
+                        if (client !== socket && client.readyState === WebSocket.OPEN) {
+                            client.send(JSON.stringify({
+                                cmd: "update_anim",
+                                content: {
+                                    uuid: uuid,
+                                    anim: data.content.anim
                                 }
                             }));
                         }
